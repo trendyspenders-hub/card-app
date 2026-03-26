@@ -11,7 +11,7 @@ const ML_SERVICE_URL = process.env.ML_SERVICE_URL || 'http://localhost:8000';
 
 const mlClient = axios.create({
   baseURL: ML_SERVICE_URL,
-  timeout: 60000,
+  timeout: 8000, // Keep under Vercel's 10s function limit; fallback analysis handles timeouts
 });
 
 async function sendImageToEndpoint<T>(endpoint: string, imageBuffer: Buffer): Promise<T> {

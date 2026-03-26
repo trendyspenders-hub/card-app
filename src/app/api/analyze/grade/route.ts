@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
+
+export const maxDuration = 30; // Allow up to 30s for Vercel Pro, 10s on Hobby (fallback fires at 8s anyway)
 import { prisma } from '@/lib/prisma';
 import { analyzeComplete } from '@/lib/ml-client';
 import { getMarketComps, calculateROI } from '@/lib/market-data';
