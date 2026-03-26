@@ -1,0 +1,35 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Next.js
+.next/
+out/
+build/
+
+# Environment
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Python
+python-service/.venv/
+python-service/__pycache__/
+python-service/**/__pycache__/
+python-service/*.pyc
+python-service/**/*.pyc
+
+# ML model weights (too large for git)
+python-service/weights/*.pkl
+python-service/weights/*.pt
+python-service/weights/*.pth
+!python-service/weights/.gitkeep
+
+# Misc
+.DS_Store
+*.pem
+.vercel
+prisma/migrations/
