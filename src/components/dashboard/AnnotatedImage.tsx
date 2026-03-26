@@ -1,11 +1,15 @@
 'use client';
 
 import { useState } from 'react';
-import { motion } from 'framer-motion';
-import { ZoomIn, ZoomOut, Eye, EyeOff, Layers } from 'lucide-react';
+import Image from 'next/image';
+import { ZoomIn, ZoomOut, Layers } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import type { CenteringResult, CornerResult, SurfaceResult } from '@/types';
 
-interface AnnotatedImageProps {
+type Overlay = 'centering' | 'corners' | 'surface';
+
+interface Props {
   imageUrl: string;
   annotatedImageUrl?: string;
   centering: CenteringResult;
@@ -13,248 +17,129 @@ interface AnnotatedImageProps {
   surface: SurfaceResult;
 }
 
-type Overlay = 'centering' | 'corners' | 'surface';
+const SEVERITY_COLORS: Record<string, string> = {
+  minor: 'rgba(234,179,8,0.7)',
+  moderate: 'rgba(249,115,22,0.7)',
+  severe: 'rgba(239,68,68,0.8)',
+};
 
-function getSeverityColor(severity: string): string {
-  if (severity === 'severe') return 'rgba(239,68,68,0.7)';
-  if (severity === 'moderate') return 'rgba(249,115,22,0.7)';
-  return 'rgba(234,179,8,0.6)';
-}
-
-export default function AnnotatedImage({
-  imageUrl,
-  annotatedImageUrl,
-  centering,
-  corners,
-  surface,
-}: AnnotatedImageProps) {
+export default function AnnotatedImage({ imageUrl, centering, corners, surface }: Props) {
   const [zoom, setZoom] = useState(1);
   const [activeOverlays, setActiveOverlays] = useState<Set<Overlay>>(
-    new Set(['centering', 'corners', 'surface'])
+    new Set<Overlay>(['centering', 'corners', 'surface'])
   );
-  const [showAnnotated, setShowAnnotated] = useState(false);
 
-  const toggleOverlay = (overlay: Overlay) => {
-    setActiveOverlays((prev) => {
+  const toggleOverlay = (o: Overlay) => {
+    setActiveOverlays(prev => {
       const next = new Set(prev);
-      if (next.has(overlay)) next.delete(overlay);
-      else next.add(overlay);
+      next.has(o) ? next.delete(o) : next.add(o);
       return next;
     });
   };
 
-  const zoomIn = () => setZoom((z) => Math.min(z + 0.25, 3));
-  const zoomOut = () => setZoom((z) => Math.max(z - 0.25, 0.5));
+  const cornerLabels: { key: keyof CornerResult; label: string; pos: string }[] = [
+    { key: 'frontLeft',  label: 'FL', pos: 'top-1 left-1' },
+    { key: 'frontRight', label: 'FR', pos: 'top-1 right-1' },
+    { key: 'backLeft',   label: 'BL', pos: 'bottom-1 left-1' },
+    { key: 'backRight',  label: 'BR', pos: 'bottom-1 right-1' },
+  ];
 
-  const displayUrl = showAnnotated && annotatedImageUrl ? annotatedImageUrl : imageUrl;
-
-  // SVG overlay dimensions (relative percentages)
-  const svgW = 100;
-  const svgH = 100;
-
-  // Centering lines (simplified representation)
-  const borderL = (centering.leftPct / 100) * svgW;
-  const borderR = svgW - (centering.rightPct / 100) * svgW;
-  const borderT = (centering.topPct / 100) * svgH;
-  const borderB = svgH - (centering.bottomPct / 100) * svgH;
+  const scoreColor = (s: number) =>
+    s >= 9 ? 'bg-emerald-500' : s >= 7 ? 'bg-yellow-500' : 'bg-red-500';
 
   return (
-    <div className="rounded-xl border border-gray-800 bg-gray-900 overflow-hidden">
-      {/* Toolbar */}
-      <div className="flex items-center justify-between border-b border-gray-800 px-4 py-2">
-        <div className="flex items-center gap-1">
-          <Layers className="h-4 w-4 text-gray-500 mr-1" />
-          <span className="text-xs text-gray-400 mr-2">Overlays:</span>
-          {(['centering', 'corners', 'surface'] as Overlay[]).map((overlay) => (
-            <button
-              key={overlay}
-              onClick={() => toggleOverlay(overlay)}
-              className={`rounded px-2 py-1 text-xs capitalize transition-colors ${
-                activeOverlays.has(overlay)
-                  ? overlay === 'centering'
-                    ? 'bg-blue-500/20 text-blue-400'
-                    : overlay === 'corners'
-                    ? 'bg-purple-500/20 text-purple-400'
-                    : 'bg-red-500/20 text-red-400'
-                  : 'text-gray-600 hover:text-gray-400'
-              }`}
-            >
-              {overlay}
-            </button>
-          ))}
-        </div>
-
-        <div className="flex items-center gap-2">
-          {annotatedImageUrl && (
-            <button
-              onClick={() => setShowAnnotated(!showAnnotated)}
-              className={`flex items-center gap-1 rounded px-2 py-1 text-xs transition-colors ${
-                showAnnotated ? 'text-indigo-400 bg-indigo-500/10' : 'text-gray-500 hover:text-gray-300'
-              }`}
-            >
-              {showAnnotated ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}
-              {showAnnotated ? 'Annotated' : 'Original'}
-            </button>
-          )}
+    <div className="space-y-3">
+      {/* Overlay toggles */}
+      <div className="flex items-center gap-2 flex-wrap">
+        <Layers className="w-4 h-4 text-gray-400" />
+        {(['centering', 'corners', 'surface'] as Overlay[]).map(o => (
           <button
-            onClick={zoomOut}
-            className="rounded p-1 text-gray-500 hover:text-white hover:bg-gray-800 transition-colors"
-            disabled={zoom <= 0.5}
+            key={o}
+            onClick={() => toggleOverlay(o)}
+            className={`text-xs px-2 py-1 rounded border transition-colors ${
+              activeOverlays.has(o)
+                ? 'bg-indigo-600 border-indigo-500 text-white'
+                : 'bg-gray-800 border-gray-700 text-gray-400'
+            }`}
           >
-            <ZoomOut className="h-4 w-4" />
+            {o}
           </button>
-          <span className="text-xs text-gray-500 w-10 text-center">{Math.round(zoom * 100)}%</span>
-          <button
-            onClick={zoomIn}
-            className="rounded p-1 text-gray-500 hover:text-white hover:bg-gray-800 transition-colors"
-            disabled={zoom >= 3}
-          >
-            <ZoomIn className="h-4 w-4" />
-          </button>
+        ))}
+        <div className="ml-auto flex items-center gap-1">
+          <Button size="sm" variant="ghost" onClick={() => setZoom(z => Math.max(0.5, z - 0.25))}>
+            <ZoomOut className="w-4 h-4" />
+          </Button>
+          <span className="text-xs text-gray-400 w-10 text-center">{Math.round(zoom * 100)}%</span>
+          <Button size="sm" variant="ghost" onClick={() => setZoom(z => Math.min(3, z + 0.25))}>
+            <ZoomIn className="w-4 h-4" />
+          </Button>
         </div>
       </div>
 
-      {/* Image display */}
-      <div
-        className="relative overflow-auto bg-gray-950"
-        style={{ maxHeight: '500px' }}
-      >
-        <div
-          className="relative inline-block"
-          style={{
-            transform: `scale(${zoom})`,
-            transformOrigin: 'top left',
-            transition: 'transform 0.2s ease',
-          }}
-        >
-          <img
-            src={displayUrl}
-            alt="Card analysis"
-            className="block max-w-full"
-            style={{ minWidth: 300 }}
+      {/* Image with SVG overlays */}
+      <div className="relative overflow-auto rounded-lg bg-gray-900 border border-gray-800" style={{ maxHeight: 480 }}>
+        <div style={{ transform: `scale(${zoom})`, transformOrigin: 'top left', display: 'inline-block', position: 'relative' }}>
+          <Image
+            src={imageUrl}
+            alt="Card"
+            width={400}
+            height={560}
+            className="block"
+            style={{ maxWidth: '100%', height: 'auto' }}
           />
 
-          {/* SVG overlay */}
+          {/* SVG overlay layer */}
           <svg
             className="absolute inset-0 w-full h-full pointer-events-none"
-            viewBox={`0 0 ${svgW} ${svgH}`}
+            viewBox="0 0 400 560"
             preserveAspectRatio="none"
           >
-            {/* Centering overlay */}
-            {activeOverlays.has('centering') && (
-              <g>
-                {/* Border lines */}
-                <line
-                  x1={borderL} y1={0}
-                  x2={borderL} y2={svgH}
-                  stroke="rgba(99,102,241,0.7)"
-                  strokeWidth="0.4"
-                  strokeDasharray="2 1"
-                />
-                <line
-                  x1={borderR} y1={0}
-                  x2={borderR} y2={svgH}
-                  stroke="rgba(99,102,241,0.7)"
-                  strokeWidth="0.4"
-                  strokeDasharray="2 1"
-                />
-                <line
-                  x1={0} y1={borderT}
-                  x2={svgW} y2={borderT}
-                  stroke="rgba(99,102,241,0.7)"
-                  strokeWidth="0.4"
-                  strokeDasharray="2 1"
-                />
-                <line
-                  x1={0} y1={borderB}
-                  x2={svgW} y2={borderB}
-                  stroke="rgba(99,102,241,0.7)"
-                  strokeWidth="0.4"
-                  strokeDasharray="2 1"
-                />
-                {/* Center crosshair */}
-                <line x1="48" y1="50" x2="52" y2="50" stroke="rgba(99,102,241,0.9)" strokeWidth="0.5" />
-                <line x1="50" y1="48" x2="50" y2="52" stroke="rgba(99,102,241,0.9)" strokeWidth="0.5" />
-              </g>
-            )}
-
-            {/* Corner indicators */}
-            {activeOverlays.has('corners') && (
-              <g>
-                {[
-                  { x: borderL, y: borderT, score: corners.frontLeft, label: 'FL' },
-                  { x: borderR, y: borderT, score: corners.frontRight, label: 'FR' },
-                  { x: borderL, y: borderB, score: corners.backLeft, label: 'BL' },
-                  { x: borderR, y: borderB, score: corners.backRight, label: 'BR' },
-                ].map((corner) => {
-                  const color =
-                    corner.score >= 9 ? 'rgba(16,185,129,0.9)' :
-                    corner.score >= 7 ? 'rgba(234,179,8,0.9)' : 'rgba(239,68,68,0.9)';
-                  return (
-                    <g key={corner.label}>
-                      <circle cx={corner.x} cy={corner.y} r="2.5" fill={color} opacity="0.8" />
-                      <text
-                        x={corner.x + (corner.x > 50 ? -4 : 1)}
-                        y={corner.y + (corner.y > 50 ? -1.5 : 3.5)}
-                        fontSize="3"
-                        fill={color}
-                        fontWeight="bold"
-                      >
-                        {corner.score.toFixed(1)}
-                      </text>
-                    </g>
-                  );
-                })}
-              </g>
-            )}
+            {/* Centering lines */}
+            {activeOverlays.has('centering') && (() => {
+              const totalH = centering.left + centering.right || 1;
+              const totalV = centering.top + centering.bottom || 1;
+              const lPct = centering.left / totalH;
+              const tPct = centering.top / totalV;
+              return (
+                <>
+                  <line x1={400 * lPct} y1="0" x2={400 * lPct} y2="560" stroke="#6366f1" strokeWidth="1.5" strokeDasharray="4 2" />
+                  <line x1="0" y1={560 * tPct} x2="400" y2={560 * tPct} stroke="#6366f1" strokeWidth="1.5" strokeDasharray="4 2" />
+                </>
+              );
+            })()}
 
             {/* Surface defects */}
-            {activeOverlays.has('surface') &&
-              surface.scratches.map((defect, i) => {
-                // Convert pixel coords to percentages (approximate)
-                const x = (defect.x / 1024) * 100;
-                const y = (defect.y / 768) * 100;
-                const w = (defect.width / 1024) * 100;
-                const h = (defect.height / 768) * 100;
-
-                return (
-                  <rect
-                    key={i}
-                    x={x}
-                    y={y}
-                    width={Math.max(w, 2)}
-                    height={Math.max(h, 1)}
-                    fill="none"
-                    stroke={getSeverityColor(defect.severity)}
-                    strokeWidth="0.5"
-                    rx="0.3"
-                  />
-                );
-              })}
+            {activeOverlays.has('surface') && surface.scratches.map((d, i) => (
+              <rect
+                key={i}
+                x={d.x} y={d.y} width={d.width} height={d.height}
+                fill="none"
+                stroke={SEVERITY_COLORS[d.severity] ?? 'rgba(239,68,68,0.8)'}
+                strokeWidth="1.5"
+                rx="2"
+              />
+            ))}
           </svg>
+
+          {/* Corner score badges */}
+          {activeOverlays.has('corners') && cornerLabels.map(({ key, label, pos }) => {
+            const score = corners[key] as number;
+            return (
+              <div key={key} className={`absolute ${pos}`}>
+                <span className={`text-[10px] font-bold text-white px-1 py-0.5 rounded ${scoreColor(score)}`}>
+                  {label} {score}
+                </span>
+              </div>
+            );
+          })}
         </div>
       </div>
 
       {/* Legend */}
-      <div className="flex flex-wrap gap-3 border-t border-gray-800 px-4 py-2">
-        {activeOverlays.has('centering') && (
-          <div className="flex items-center gap-1.5 text-xs text-gray-400">
-            <div className="h-0.5 w-5 bg-indigo-500/70" style={{ borderTop: '1px dashed rgba(99,102,241,0.7)' }} />
-            <span>Centering</span>
-          </div>
-        )}
-        {activeOverlays.has('corners') && (
-          <div className="flex items-center gap-1.5 text-xs text-gray-400">
-            <div className="h-2 w-2 rounded-full bg-emerald-500" />
-            <span>Corners</span>
-          </div>
-        )}
-        {activeOverlays.has('surface') && surface.scratches.length > 0 && (
-          <div className="flex items-center gap-1.5 text-xs text-gray-400">
-            <div className="h-3 w-4 rounded border border-red-500/70" />
-            <span>Defects</span>
-          </div>
-        )}
+      <div className="flex gap-3 text-xs text-gray-400">
+        <span className="flex items-center gap-1"><span className="w-3 h-0.5 bg-indigo-500 inline-block" /> Centering</span>
+        <span className="flex items-center gap-1"><span className="w-3 h-3 border border-yellow-500 inline-block rounded-sm" /> Defects</span>
+        <span className="flex items-center gap-1"><span className="w-3 h-3 bg-emerald-500 inline-block rounded-sm" /> Corners</span>
       </div>
     </div>
   );

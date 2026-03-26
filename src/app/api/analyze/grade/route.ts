@@ -3,7 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { analyzeComplete } from '@/lib/ml-client';
 import { getMarketComps, calculateROI } from '@/lib/market-data';
 import { getServerSession } from 'next-auth';
-import { authOptions } from '@/app/api/auth/[...nextauth]/route';
+import { authOptions } from '@/lib/auth';
 
 export async function POST(request: NextRequest) {
   try {
@@ -60,10 +60,10 @@ export async function POST(request: NextRequest) {
         cornerBL: corners.backLeft,
         cornerBR: corners.backRight,
         surfaceScore: surface.score,
-        surfaceData: surface as unknown as Record<string, unknown>,
+        surfaceData: JSON.parse(JSON.stringify(surface)),
         predictedGrade: grade.predictedGrade,
         confidence: grade.confidence,
-        gradeBreakdown: grade.breakdown as unknown as Record<string, unknown>,
+        gradeBreakdown: JSON.parse(JSON.stringify(grade.breakdown)),
         identification: (playerName || year || cardSet || cardNumber)
           ? {
               create: {
