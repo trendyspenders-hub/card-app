@@ -49,7 +49,8 @@ export async function POST(request: NextRequest) {
         userId: session?.user?.email
           ? (await prisma.user.findUnique({ where: { email: session.user.email } }))?.id || null
           : null,
-        imageUrl,
+        // Only save actual URLs to DB — never save base64 data URIs (kills Neon free tier quota)
+        imageUrl: imageUrl.startsWith('data:') ? (key || 'local') : imageUrl,
         centeringLeft: centering.left,
         centeringRight: centering.right,
         centeringTop: centering.top,
