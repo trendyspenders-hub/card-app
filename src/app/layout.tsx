@@ -1,34 +1,29 @@
 import type { Metadata } from 'next';
-import { Inter } from 'next/font/google';
 import './globals.css';
 import { SessionProviderWrapper } from './session-provider';
 import NavBar from './nav-bar';
 
-const inter = Inter({ subsets: ['latin'] });
-
 export const metadata: Metadata = {
-  title: 'CardGrade AI — AI Sports Card Grading & Valuation',
+  title: 'CardGrade — AI Sports Card Grading & Valuation',
   description:
-    'Get instant AI-powered sports card grading predictions, market comparables, and ROI analysis before you submit to PSA, BGS, or SGC.',
+    'Get instant AI-powered sports card grading predictions, real market comparables, and ROI analysis before you submit to PSA, BGS, or SGC.',
   keywords: ['sports card grading', 'PSA grade prediction', 'card valuation', 'AI grading'],
   openGraph: {
-    title: 'CardGrade AI',
-    description: 'Know before you grade. AI-powered sports card grading analysis.',
+    title: 'CardGrade — Know Before You Grade',
+    description: 'AI-powered sports card grading analysis. Instant results.',
     type: 'website',
   },
 };
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className="dark">
-      <body className={`${inter.className} bg-gray-950 text-white min-h-screen`}>
+    <html lang="en">
+      <body className="bg-[#050505] text-white min-h-screen">
+        {/* Ambient gradient mesh */}
+        <div className="mesh-bg" aria-hidden="true" />
         <SessionProviderWrapper>
           <NavBar />
-          <main>{children}</main>
+          <main className="relative z-10">{children}</main>
         </SessionProviderWrapper>
       </body>
     </html>
